@@ -182,6 +182,22 @@ def detect_and_draw(frame, tracker, overlay_file=None):
         )
     return frame
 
+def run_camera(overlay_file=None):
+    tracker = FaceTracker()
+    cap = cv2.VideoCapture(0)  # 0 - pierwsza kamera
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            print("Nie udało się pobrać klatki z kamery.")
+            break
+        frame = detect_and_draw(frame, tracker, overlay_file)
+        cv2.imshow("Face masks live", frame)
+        key = cv2.waitKey(1)
+        if key == 27:  # ESC zamyka okno
+            break
+    cap.release()
+    cv2.destroyAllWindows()
+
 
 def run_video(filename="DOOM (acapella).mp4", overlay_file=None):
     tracker = FaceTracker()
@@ -196,35 +212,45 @@ def run_video(filename="DOOM (acapella).mp4", overlay_file=None):
     cap.release()
     cv2.destroyAllWindows()
 
-
-def run_image(img_path, overlay_file=None):
-    tracker = FaceTracker()
-    image = cv2.imread(img_path)
-    frame = detect_and_draw(image, tracker, overlay_file)
-    cv2.imshow("Face masks live", frame)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
-
-
 def nothing():
     pass
+
+def main_loop(video_filename="DOOM (acapella).mp4", overlay_file=None):
+    tracker = FaceTracker()
+    cap = cv2.VideoCapture(0)
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            print("Brak klatki!")
+            break
+        frame = detect_and_draw(frame, tracker, overlay_file)
+        cv2.imshow("Face masks live", frame)
+        key = cv2.waitKey(1) & 0xFF
+
+        # Zmiana trybu na VIDEO
+        if key == ord('v'):
+            print("Przełączam na tryb VIDEO.")
+            cap.release()
+            cap = cv2.VideoCapture(video_filename)
+            tracker = FaceTracker()  # resetuj trackera, jeśli chcesz
+
+        # Zmiana trybu na KAMERA
+        if key == ord('c'):
+            print("Przełączam na tryb KAMERA.")
+            cap.release()
+            cap = cv2.VideoCapture(0)
+            tracker = FaceTracker()  # resetuj trackera, jeśli chcesz
+
+        # Wyjście
+        if key == 27:  # ESC
+            break
+    cap.release()
+    cv2.destroyAllWindows()
+
 if __name__ == '__main__':
     cv2.namedWindow("Face masks live")
     cv2.createTrackbar('scale', 'Face masks live', 11, 20, nothing)  # scaleFactor x0.1 (1.1..2.0)
     cv2.createTrackbar('minN', 'Face masks live', 8, 20, nothing)  # minNeighbors (1..20)
     cv2.createTrackbar('minS', 'Face masks live', 100, 300, nothing)  # minSize (px)
     cv2.createTrackbar('offsetY', 'Face masks live', 50, 100, nothing)  # -50..+50 (środek suwaka = 0)
-    print("Wybierz tryb:")
-    print("1 - Kamera")
-    print("2 - Plik video")
-    print("3 - Pojedynczy obrazek")
-    print("4 - Playground (tu możesz rozwinąć dalej)")
-    choice = "1" #input("Tryb [1/2/3]: ")
-    if choice == "1":
-        run_video()
-    elif choice == "2":
-        run_video()
-    elif choice == "3":
-        img_path = input("Podaj nazwę pliku obrazka: ")
-        run_image(img_path)
-    # Możesz dodać dalej swój tryb playground, albo custom tryby
+    main_loop()
