@@ -107,54 +107,59 @@ def detect_and_draw(frame, tracker, overlay_file=None):
     minN = cv2.getTrackbarPos('minN', 'Face masks live')
     minS = cv2.getTrackbarPos('minS', 'Face masks live')
     offsetY = cv2.getTrackbarPos('offsetY', 'Face masks live') - 50  # środek = 0
-    mask_1_x = cv2.getTrackbarPos('mask_mask_x', 'Face masks live') / 10.0
-    mask_1_y = cv2.getTrackbarPos('mask_mask_y', 'Face masks live')
-    mask_2_x = cv2.getTrackbarPos('mask_mask_y', 'Face masks live')
-    mask_2_y = cv2.getTrackbarPos('mask_mask_y', 'Face masks live')
-    mask_3_x = cv2.getTrackbarPos('mask_mask_x', 'Face masks live') / 10.0
-    mask_3_y = cv2.getTrackbarPos('mask_mask_y', 'Face masks live')
-    mask_4_x = cv2.getTrackbarPos('mask_mask_x', 'Face masks live') / 10.0
-    mask_4_y = cv2.getTrackbarPos('mask_mask_y', 'Face masks live')
-    mask_5_x = cv2.getTrackbarPos('mask_mask_x', 'Face masks live') / 10.0
-    mask_5_y = cv2.getTrackbarPos('mask_mask_y', 'Face masks live')
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     faces = face_cascade.detectMultiScale(gray, scale, minN, minSize=(minS, offsetY))
     tracker.update(faces)
     tracked = tracker.get_faces()
 
-
-
-
     for fid, data in tracked.items():
         x, y, w, h = data['bbox']
         mask_id = data['mask_id']
         mask_img = MASK_IMAGES[mask_id]
-        match mask_id:  # mask1: jeszcze wyżej!
-            case 1:
+
+        # Dla czytelności: opisy masek
+        mask_labels = [
+            "zielona herbata",  # mask1.png
+            "tecza",  # mask2.png
+            "maska",  # mask3.png
+            "czapka klauna",  # mask4.png
+            "wasy"  # mask5.png
+        ]
+        mask_label = mask_labels[mask_id]
+
+        # Każdy obrazek ma swój case:
+        match mask_id:
+            case 0:  # mask1.png – zielona herbata (na czole/lekko nad)
                 mask_width = w
                 mask_height = int(mask_img.shape[0] * (mask_width / mask_img.shape[1]))
                 mask_x = x
                 mask_y = max(0, y - mask_height + 10 + offsetY)
-            case 2:  # mask2, mask4: na głowie standardowo
+            case 1:  # mask2.png – tęcza (nad głową)
                 mask_width = w
                 mask_height = int(mask_img.shape[0] * (mask_width / mask_img.shape[1]))
                 mask_x = x
                 mask_y = max(0, y - mask_height + 10 + offsetY)
-            case 3:  # mask3: na oczach
-                mask_width = int(w * 1.03)
+            case 2:  # mask3.png – maska (niżej na twarzy, wycentrowana)
+                mask_width = int(w * 1.4)
                 mask_height = int(mask_img.shape[0] * (mask_width / mask_img.shape[1]))
-                mask_x = x - int(w * 0.015)
-                mask_y = y + int(h * 0.08) + offsetY
-            case 4:  # mask5: wąsy
+                mask_x = x + w // 2 - mask_width // 2  # wyśrodkowanie maski
+                mask_y = y + int(h * 0.02) - 25  # dalej możesz tym regulować pionowo
+            case 3:  # mask4.png – czapka klauna (na głowie)
+                mask_width = w
+                mask_height = int(mask_img.shape[0] * (mask_width / mask_img.shape[1]))
+                mask_x = x
+                mask_y = max(0, y - mask_height + 10 + offsetY)
+            case 4:  # mask5.png – wąsy (pod nosem)
                 mask_width = int(w * 0.75)
                 mask_height = int(mask_img.shape[0] * (mask_width / mask_img.shape[1]))
                 mask_x = x + int(w * 0.125)
                 mask_y = y + int(h * 0.52) + offsetY
-            case _:  # domyślna pozycja (na czole)
+            case _:  # awaryjnie na czole
                 mask_width = w
                 mask_height = int(mask_img.shape[0] * (mask_width / mask_img.shape[1]))
                 mask_x = x
                 mask_y = y + offsetY
+
         frame = overlay_image_alpha(frame, mask_img, (mask_x, mask_y), (mask_width, mask_height))
         if overlay_file:  # dodatkowy overlay, np. wybrany przez użytkownika
             overlay = cv2.imread(overlay_file, cv2.IMREAD_UNCHANGED)
@@ -165,11 +170,20 @@ def detect_and_draw(frame, tracker, overlay_file=None):
                 ov_y = y
                 frame = overlay_image_alpha(frame, overlay, (ov_x, ov_y), (ov_w, ov_h))
         cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 255), 2)
-        cv2.putText(frame, f'ID:{fid} mask:{mask_id + 1}', (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
+        # PODPIS: ID i opis maski!
+        cv2.putText(
+            frame,
+            f'ID:{fid} - {mask_label}',
+            (x, y - 10),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.7,
+            (0, 255, 255),
+            2
+        )
     return frame
 
 
-def run_video(filename="5 People 1 Guitar!.mp4", overlay_file=None):
+def run_video(filename="DOOM (acapella).mp4", overlay_file=None):
     tracker = FaceTracker()
     cap = cv2.VideoCapture(0 if filename is None else filename)
     while True:
@@ -200,16 +214,6 @@ if __name__ == '__main__':
     cv2.createTrackbar('minN', 'Face masks live', 8, 20, nothing)  # minNeighbors (1..20)
     cv2.createTrackbar('minS', 'Face masks live', 100, 300, nothing)  # minSize (px)
     cv2.createTrackbar('offsetY', 'Face masks live', 50, 100, nothing)  # -50..+50 (środek suwaka = 0)
-    cv2.createTrackbar('mask1_x', 'Face masks live', 0, 100, nothing)
-    cv2.createTrackbar('mask1_y', 'Face masks live', 0, 100, nothing)
-    cv2.createTrackbar('mask2_x', 'Face masks live', 0, 100, nothing)
-    cv2.createTrackbar('mask2_y', 'Face masks live', 0, 100, nothing)
-    cv2.createTrackbar('mask3_x', 'Face masks live', 0, 100, nothing)
-    cv2.createTrackbar('mask3_y', 'Face masks live', 0, 100, nothing)
-    cv2.createTrackbar('mask4_x', 'Face masks live', 0, 100, nothing)
-    cv2.createTrackbar('mask4_y', 'Face masks live', 0, 100, nothing)
-    cv2.createTrackbar('mask5_x', 'Face masks live', 0, 100, nothing)
-    cv2.createTrackbar('mask5_y', 'Face masks live', 0, 100, nothing)
     print("Wybierz tryb:")
     print("1 - Kamera")
     print("2 - Plik video")
