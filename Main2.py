@@ -108,7 +108,11 @@ def detect_and_draw(frame, tracker, overlay_file=None):
     minS = cv2.getTrackbarPos('minS', 'Face masks live')
     offsetY = cv2.getTrackbarPos('offsetY', 'Face masks live') - 50  # środek = 0
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    faces = face_cascade.detectMultiScale(gray, scale, minN, minSize=(minS, offsetY))
+    faces = face_cascade.detectMultiScale(
+        gray,
+        scale,
+        minN,
+        minSize=(minS, offsetY))
     tracker.update(faces)
     tracked = tracker.get_faces()
 
